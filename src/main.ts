@@ -46,7 +46,8 @@ async function getCellValueInput(
 
     validateCellValue(cellValue);
 
-    validateBoard(Number(cellValue), index, board);
+    validateColAndRowOfBoard(Number(cellValue), index, board);
+    validateSquareBoard(Number(cellValue), index, board);
 
     return cellValue;
   } catch (error) {
@@ -59,7 +60,7 @@ function hasCellEmpty(board: BoardType): boolean {
   if (!board.length) throw new Error("Board is empty");
 
   for (const cell of board) {
-    if (cell.includes(null)) return true;
+    if (cell.includes(0)) return true;
     else return false;
   }
 
@@ -80,7 +81,7 @@ function getCellCoordinatesFromIndex(
 }
 
 function getCellCoordinates(coodinates: string): number[] {
-  const [x, y] = coodinates.split(" ");
+  const [x, y] = coodinates.split("");
   return [Number(x), Number(y)];
 }
 
@@ -114,8 +115,9 @@ function printBoard(board: BoardType): void {
 
   board.forEach((cell, index) => {
     drawed += `[${formatCellIdentifierToPrint(cell[0])}, ${
-      cell[1] ? `  ${cell[1]}  ` : "EMPTY"
+      cell[1] ? `  ${cell[1]}  ` : "  "
     }]`;
+
     if ((index + 1) % MAX_NUMBER === 0) {
       drawed += "\n";
     }
@@ -146,37 +148,80 @@ function validateCellValue(cellValue: string): void {
 }
 
 function validateCoordinates(coordinates: string): void {
-  const regex = /^\d+\s\d+$/;
+  const regex = /^\d+\d+$/;
 
   if (!regex.test(coordinates)) {
-    throw new Error(
-      `Coordinates must be on the pattern NUMBER SPACE NUMBER like 0 0`
-    );
+    throw new Error(`Coordinates must be on the pattern NUMBER NUMBER like 00`);
   }
 }
 
-function validateBoard(
+function validateSquareBoard(
   value: number,
   index: number,
   board: BoardType
-): boolean {
+): void {
   const [x, y] = getCellCoordinatesFromIndex(index, board);
 
-  const boartOnlyWithValues: (null | number)[][] = board
+  const boardOnlyWithValues: (number | null)[][] = [];
+  let previous: (number | null)[] = [];
+
+  board
     .map((cell) => cell[1])
-    .reduce<(null | number)[][]>((previous, current, index) => {
+    .map((cell, index) => {
+      previous.push(cell);
+
       if ((index + 1) % MAX_NUMBER === 0) {
-        previous.push([current]);
+        boardOnlyWithValues.push(previous);
+        previous = [];
       }
-      return previous;
-    }, []);
+    });
 
-  console.log(boartOnlyWithValues);
+  const startX = Math.floor(x / 3) * 3;
+  const startY = Math.floor(y / 3) * 3;
 
-  const row = board[x];
-  const column = board.map((row) => row[y]);
+  for (let i = startX; i < startX + 3; i++) {
+    for (let j = startY; j < startY + 3; j++) {
+      if (boardOnlyWithValues[i][j] === value) {
+        throw new Error(`${value} Already exists on this Square.`);
+      }
+    }
+  }
+}
 
-  return true;
+function validateColAndRowOfBoard(
+  value: number,
+  index: number,
+  board: BoardType
+): void {
+  const [x, y] = getCellCoordinatesFromIndex(index, board);
+
+  const boardOnlyWithValues: (number | null)[][] = [];
+  let previous: (number | null)[] = [];
+
+  board
+    .map((cell) => cell[1])
+    .map((cell, index) => {
+      previous.push(cell);
+
+      if ((index + 1) % MAX_NUMBER === 0) {
+        boardOnlyWithValues.push(previous);
+        previous = [];
+      }
+    });
+
+  const row = boardOnlyWithValues[x];
+  const column = boardOnlyWithValues.map((row) => row[y]);
+
+  const isRowValid = !row.includes(value) || row[y] === value;
+  if (!isRowValid) {
+    throw new Error(`${value} Already present on row`);
+  }
+
+  const isColumnValid =
+    !column.some((cell) => cell === value) || column[x] === value;
+  if (!isColumnValid) {
+    throw new Error(`${value} Already present on column`);
+  }
 }
 
 (async () => {
